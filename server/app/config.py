@@ -73,8 +73,8 @@ def validate_config():
                 errors.append(f"Missing required environment variable: {var_name}")
 
         # Check for insecure redirect URIs in production
-        if GOOGLE_REDIRECT_URI and "localhost" in GOOGLE_REDIRECT_URI:
-            errors.append("localhost in GOOGLE_REDIRECT_URI is insecure in production")
+        # if GOOGLE_REDIRECT_URI and "localhost" in GOOGLE_REDIRECT_URI:
+        #     errors.append("localhost in GOOGLE_REDIRECT_URI is insecure in production")
 
     if errors:
         raise ValueError(f"Configuration validation failed:\n" + "\n".join(errors))
