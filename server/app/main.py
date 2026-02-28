@@ -488,6 +488,25 @@ async def list_appointments():
     """Return all booked appointments."""
     return {"appointments": booked_slots, "count": len(booked_slots)}
 
+@app.post("/assistant/refresh")
+async def refresh_assistant():
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.vapi.ai/assistant",
+            headers={
+                "Authorization": f"Bearer {VAPI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=build_assistant_config(),
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return {
+            "assistant_id": data.get("id"),
+            "message": f"Copy to Railway env: VAPI_ASSISTANT_ID={data.get('id')}"
+        }
+
 
 if __name__ == "__main__":
     import uvicorn
