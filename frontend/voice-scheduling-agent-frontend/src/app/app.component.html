@@ -1,0 +1,307 @@
+<!-- app.component.html -->
+<div class="app">
+
+  <!-- Animated background -->
+  <div class="bg-grid"></div>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <path d="M16 2L28 26H4L16 2Z" fill="url(#vGrad)" opacity="0.9"/>
+          <path d="M16 8L24 24H8L16 8Z" fill="url(#vGrad2)"/>
+          <defs>
+            <linearGradient id="vGrad" x1="4" y1="26" x2="28" y2="2" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#00d4ff"/>
+              <stop offset="100%" stop-color="#7b2fff"/>
+            </linearGradient>
+            <linearGradient id="vGrad2" x1="8" y1="24" x2="24" y2="8" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0a0a0f"/>
+              <stop offset="100%" stop-color="#0a0a0f"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="logo-text">VIKARA</span>
+      </div>
+  
+      <div class="header-right">
+        <div class="auth-pill" [class.connected]="isAuthenticated">
+          <div class="auth-dot"></div>
+          <span>{{ isAuthenticated ? 'Calendar Connected' : 'Not Connected' }}</span>
+        </div>
+  
+        <!-- ✅ Show logout only when authenticated -->
+        <button class="btn-logout" *ngIf="isAuthenticated" (click)="logout()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Google Auth Screen -->
+    <div class="auth-screen" *ngIf="!isCheckingAuth && !isAuthenticated">
+      <div class="auth-card">
+        <div class="auth-badge">ENTERPRISE AI</div>
+        <h1 class="auth-title">Connect Your<br><span class="gradient-text">Calendar</span></h1>
+        <p class="auth-desc">Talk to our Live Agent Maya and schedule a discovery session. Sign In to Talk</p>
+        <button class="btn-connect" (click)="connectGoogle()">
+          <svg width="20" height="20" viewBox="0 0 20 20">
+            <path d="M17.6 10.2c0-.6-.05-1.2-.15-1.8H10v3.4h4.3c-.2 1-.75 1.85-1.6 2.4v2h2.6c1.5-1.4 2.3-3.45 2.3-6z" fill="#4285F4"/>
+            <path d="M10 18c2.15 0 3.95-.7 5.3-1.9l-2.6-2c-.7.47-1.6.75-2.7.75-2.1 0-3.85-1.4-4.5-3.3H2.85v2.05C4.2 16.3 6.9 18 10 18z" fill="#34A853"/>
+            <path d="M5.5 11.55c-.16-.47-.25-.97-.25-1.55s.09-1.08.25-1.55V6.4H2.85C2.3 7.5 2 8.7 2 10s.3 2.5.85 3.6l2.65-2.05z" fill="#FBBC05"/>
+            <path d="M10 4.65c1.2 0 2.25.41 3.1 1.2l2.3-2.3C14 2.3 12.2 1.5 10 1.5 6.9 1.5 4.2 3.2 2.85 5.75L5.5 7.8C6.15 5.9 7.9 4.65 10 4.65z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
+        <div class="auth-features">
+          <div class="auth-feat" *ngFor="let f of authFeatures">
+            <div class="feat-check">✓</div>
+            <span>{{ f }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side info -->
+      <div class="auth-side">
+        <div class="side-tag">POWERED BY VIKARA AI</div>
+        <h2 class="side-title">Outbound AI Scheduling at Scale</h2>
+        <p class="side-desc">Maya reaches out to your prospects, qualifies their needs, and books discovery sessions — all through natural voice conversation.</p>
+        <div class="side-stats">
+          <div class="stat">
+            <div class="stat-num">500+</div>
+            <div class="stat-label">Businesses Served</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">20+</div>
+            <div class="stat-label">Years Combined</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">3</div>
+            <div class="stat-label">Global Offices</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Dashboard -->
+    <div class="dashboard" *ngIf="!isCheckingAuth && isAuthenticated">
+
+      <!-- Left panel -->
+      <div class="panel-left">
+        <div class="agent-card">
+          <!-- Avatar -->
+          <div class="avatar-wrap">
+            <div class="avatar-ring" [class.active]="callStatus === 'active'">
+              <div class="avatar-ring-2" [class.active]="callStatus === 'active'"></div>
+              <div class="avatar">
+                <div class="avatar-inner" [class.speaking]="isAssistantSpeaking">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                    <circle cx="24" cy="18" r="10" fill="url(#aGrad)"/>
+                    <path d="M6 42c0-9.9 8.1-18 18-18s18 8.1 18 18" stroke="url(#aGrad)" stroke-width="3" stroke-linecap="round"/>
+                    <defs>
+                      <linearGradient id="aGrad" x1="6" y1="6" x2="42" y2="42">
+                        <stop offset="0%" stop-color="#00d4ff"/>
+                        <stop offset="100%" stop-color="#7b2fff"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+
+                <!-- Wave bars when active -->
+                <div class="wave-container" *ngIf="callStatus === 'active'">
+                  <div class="wave-bar" *ngFor="let b of [1,2,3,4,5]"
+                       [class.animate]="isAssistantSpeaking || isUserSpeaking"
+                       [style.animation-delay]="(b * 0.1) + 's'">
+                  </div>
+                </div>
+
+                <!-- Spinner when connecting -->
+                <div class="connecting-ring" *ngIf="callStatus === 'connecting'"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Agent info -->
+          <div class="agent-info">
+            <h2 class="agent-name">Maya</h2>
+            <p class="agent-role">Vikara AI Representative</p>
+            <div class="agent-status-row">
+              <div class="status-badge" [ngClass]="callStatus">
+                <div class="status-dot" [class.pulse]="callStatus === 'active'"></div>
+                {{ statusLabel }}
+              </div>
+              <div class="duration-chip" *ngIf="callStatus === 'active'">
+                {{ formattedDuration }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="controls">
+            <button class="btn-call" *ngIf="callStatus === 'idle'"
+                    (click)="startCall()"
+                    [disabled]="!isSdkReady">
+              <span class="btn-call-glow"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 1a3 3 0 013 3v8a3 3 0 01-6 0V4a3 3 0 013-3z"/>
+                <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
+              </svg>
+              {{ isSdkReady ? 'Start Outbound Call' : 'Initializing...' }}
+            </button>
+
+            <button class="btn-cancel" *ngIf="callStatus === 'connecting'" (click)="endCall()">
+              Cancel
+            </button>
+
+            <div class="active-controls" *ngIf="callStatus === 'active'">
+              <button class="btn-mute" [class.muted]="isMuted" (click)="toggleMute()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" *ngIf="!isMuted">
+                  <path d="M12 1a3 3 0 013 3v8a3 3 0 01-6 0V4a3 3 0 013-3z"/>
+                </svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" *ngIf="isMuted">
+                  <path d="M1 1l22 22M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/>
+                </svg>
+                {{ isMuted ? 'Unmute' : 'Mute' }}
+              </button>
+              <button class="btn-end" (click)="endCall()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M23.36 14.46a1 1 0 00-1.4 0l-2.5 2.5a14.91 14.91 0 01-5.62-3.31 14.91 14.91 0 01-3.31-5.62l2.5-2.5a1 1 0 000-1.4L9.57 1.17A1 1 0 008.17 1L5 4.17C3.52 5.65 3 8.8 5.8 12.58a30.28 30.28 0 005.62 5.62C15.22 21 18.35 20.48 19.83 19l3.17-3.17a1 1 0 00-.36-1.37z"/>
+                </svg>
+                End Call
+              </button>
+            </div>
+
+            <button class="btn-new" *ngIf="callStatus === 'ended'" (click)="resetCall()">
+              New Call
+            </button>
+          </div>
+
+          <!-- Error -->
+          <div class="error-strip" *ngIf="errorMessage">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ errorMessage }}
+          </div>
+
+          <!-- Capabilities when idle -->
+          <div class="capabilities" *ngIf="callStatus === 'idle'">
+            <div class="cap-title">WHAT MAYA DOES</div>
+            <div class="cap-item" *ngFor="let c of capabilities">
+              <div class="cap-icon">{{ c.icon }}</div>
+              <span>{{ c.text }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="panel-right">
+
+        <!-- Booked event card -->
+        <div class="event-card" *ngIf="createdEvent">
+          <div class="event-card-header">
+            <div class="event-check">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <span>Session Booked</span>
+            <div class="event-live-dot"></div>
+          </div>
+          <div class="event-body">
+            <div class="event-row">
+              <span class="event-key">Session</span>
+              <span class="event-val">{{ createdEvent.title }}</span>
+            </div>
+            <div class="event-row">
+              <span class="event-key">Client</span>
+              <span class="event-val">{{ createdEvent.name }}</span>
+            </div>
+            <div class="event-row">
+              <span class="event-key">Date</span>
+              <span class="event-val">{{ createdEvent.date }}</span>
+            </div>
+            <div class="event-row">
+              <span class="event-key">Time</span>
+              <span class="event-val">{{ createdEvent.time }}</span>
+            </div>
+          </div>
+          <a *ngIf="createdEvent.event_link" [href]="createdEvent.event_link"
+             target="_blank" class="event-link">
+            Open in Google Calendar
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
+            </svg>
+          </a>
+        </div>
+
+        <!-- Transcript -->
+        <div class="transcript-card" *ngIf="transcript.length > 0">
+          <div class="transcript-header">
+            <span>Live Transcript</span>
+            <div class="live-indicator" *ngIf="callStatus === 'active'">
+              <div class="live-dot"></div>
+              LIVE
+            </div>
+          </div>
+          <div class="transcript-body" #transcriptBody>
+            <div class="transcript-msg"
+                 *ngFor="let msg of transcript"
+                 [class.maya]="msg.role === 'assistant'"
+                 [class.user]="msg.role === 'user'">
+              <div class="msg-label">{{ msg.role === 'assistant' ? 'Maya' : 'You' }}</div>
+              <div class="msg-text">{{ msg.text }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-state" *ngIf="transcript.length === 0 && !createdEvent">
+          <div class="empty-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#eGrad)" stroke-width="1.5">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+              <defs>
+                <linearGradient id="eGrad" x1="0" y1="0" x2="24" y2="24">
+                  <stop offset="0%" stop-color="#00d4ff"/>
+                  <stop offset="100%" stop-color="#7b2fff"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <p class="empty-title">No active session</p>
+          <p class="empty-desc">Start a call to see the live transcript and booking details here.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-screen" *ngIf="isCheckingAuth">
+      <div class="loading-ring"></div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>vikara.ai</span>
+    <span class="footer-dot">·</span>
+    <span>SF Bay Area · Bengaluru · Melbourne</span>
+    <span class="footer-dot">·</span>
+    <span>ask&#64;vikara.ai</span>
+  </footer>
+
+</div>
