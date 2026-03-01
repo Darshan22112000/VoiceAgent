@@ -24,8 +24,8 @@ GOOGLE_SCOPES = [
     "openid"
 ]
 
-GOOGLE_AUTH_SCOPES = os.getenv("GOOGLE_AUTH_SCOPES")
-GOOGLE_SERVICE_ACCOUNT_JSON = json.loads(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")) # For server-to-server auth (optional)
+# GOOGLE_AUTH_SCOPES = os.getenv("GOOGLE_AUTH_SCOPES")
+# GOOGLE_SERVICE_ACCOUNT_JSON = json.loads(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"))
 GOOGLE_CALENDAR_REFRESH_TOKEN = os.getenv("GOOGLE_CALENDAR_REFRESH_TOKEN")  # For long-term calendar access (optional)
 
 # Backend Configuration
