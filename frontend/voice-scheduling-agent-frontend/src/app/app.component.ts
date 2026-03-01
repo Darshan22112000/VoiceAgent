@@ -50,7 +50,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private durationInterval?: ReturnType<typeof setInterval>;
 
   authFeatures = [
-    'Read and write Google Calendar events',
+    'Schedule Google Calendar events',
     'Send calendar invites to clients',
     'Secure OAuth 2.0 — revoke anytime',
   ];
