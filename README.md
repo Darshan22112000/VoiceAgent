@@ -328,9 +328,3 @@ VoiceAgent/
 | `POST` | `/assistant/refresh` | Create/refresh VAPI assistant |
 | `GET` | `/appointments` | List all booked appointments |
 
-
-## 📞 Support
-
-- Website: [vikara.ai](https://vikara.ai)
-- Email: ask@vikara.ai
-- Phone: +1 510 309 6846
