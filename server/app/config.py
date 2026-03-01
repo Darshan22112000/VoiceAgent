@@ -74,6 +74,7 @@ def validate_config():
             ("GOOGLE_REDIRECT_URI", GOOGLE_REDIRECT_URI),
             ("YOUR_EMAIL", YOUR_EMAIL),
             ("BACKEND_URL", BACKEND_URL),
+            ("GOOGLE_CALENDAR_REFRESH_TOKEN", GOOGLE_CALENDAR_REFRESH_TOKEN)
         ]
 
         for var_name, var_value in required_vars:
