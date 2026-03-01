@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm install && npm run build -- --configuration production"
+
+[deploy]
+startCommand = "npx serve -s dist/voice-scheduling-agent-frontend/browser -l $PORT"
+healthcheckPath = "/"
+healthcheckTimeout = 300

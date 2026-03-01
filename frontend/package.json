@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@vapi-ai/web": "^2.5.2"
+    "@vapi-ai/web": "^2.5.2",
+    "serve": "^14.2.5"
   }
 }
