@@ -227,6 +227,7 @@ want to explore AI for your business. Have a great day!". And log this as a "no 
             "stability":       0.4,
             "similarityBoost": 0.8,
             "useSpeakerBoost": True,
+            "speed": 0.85
         },
 
         # ✅ Outbound opening — Maya introduces herself to the customer
