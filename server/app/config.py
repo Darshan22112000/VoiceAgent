@@ -200,10 +200,7 @@ want to explore AI for your business. Have a great day!". And log this as a "no 
 - Sound human — use "Got it", "Absolutely", "That makes sense", "Of course"
 - Be enthusiastic but not pushy — this is a conversation, not a sales call
 - ## Phonetic Corrections — Common Mishearings
-        When a user spells out their name/email letter by letter, use ONLY those exact letters:
-        v-e-t-a-l = "vetal" — NOT "vital", "vedal", "vadil", "vethal", "metal"
-        Always spell back using the exact letters given, never phonetically guess
-        If v-e-t-a-l was spelled: confirm as "v-e-t-a-l, vetal" — never deviate
+        When a user spells out their name/email letter by letter, use ONLY those exact letters
 - Always confirm spelling of names and emails carefully, especially if they are uncommon or could be misheard
 
 """
