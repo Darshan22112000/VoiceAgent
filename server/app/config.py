@@ -1,4 +1,4 @@
-import os
+import json, os
 from typing import Optional
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -18,7 +18,15 @@ VAPI_WEBHOOK_SECRET = os.getenv("VAPI_WEBHOOK_SECRET")  # For webhook validation
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
-GOOGLE_SCOPES = ["https://www.googleapis.com/auth/calendar"]
+GOOGLE_SCOPES = [
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "openid"
+]
+
+GOOGLE_AUTH_SCOPES = os.getenv("GOOGLE_AUTH_SCOPES")
+GOOGLE_SERVICE_ACCOUNT_JSON = json.loads(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")) # For server-to-server auth (optional)
+GOOGLE_CALENDAR_REFRESH_TOKEN = os.getenv("GOOGLE_CALENDAR_REFRESH_TOKEN")  # For long-term calendar access (optional)
 
 # Backend Configuration
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
@@ -105,7 +113,7 @@ def build_assistant_config() -> dict:
                 {
                     "role": "system",
                     "content": f"""You are {ASSISTANT_NAME}, a friendly outbound representative calling on behalf of 
-                    Vikara — an enterprise AI consulting firm that builds fast, lean, scalable AI products.
+                    Vikara — V-I-K-A-R-A — — an enterprise AI consulting firm that builds fast, lean, scalable AI products.
 
 ## About Vikara
 - Vikara helps businesses transform with AI — from strategy to deployment
@@ -189,6 +197,14 @@ want to explore AI for your business. Have a great day!". And log this as a "no 
   and IMMEDIATELY call book_appointment again with the exact same details
   - Only give up after 2 failed attempts, then say: "I'm so sorry about this — our team will reach out to confirm manually. You'll still hear from us!" 
 - Sound human — use "Got it", "Absolutely", "That makes sense", "Of course"
+- Be enthusiastic but not pushy — this is a conversation, not a sales call
+- ## Phonetic Corrections — Common Mishearings
+        When a user spells out their name/email letter by letter, use ONLY those exact letters:
+        v-e-t-a-l = "vetal" — NOT "vital", "vedal", "vadil", "vethal", "metal"
+        Always spell back using the exact letters given, never phonetically guess
+        If v-e-t-a-l was spelled: confirm as "v-e-t-a-l, vetal" — never deviate
+- Always confirm spelling of names and emails carefully, especially if they are uncommon or could be misheard
+
 """
                 }
             ],
@@ -227,7 +243,7 @@ want to explore AI for your business. Have a great day!". And log this as a "no 
             "stability":       0.4,
             "similarityBoost": 0.8,
             "useSpeakerBoost": True,
-            "speed": 0.85
+            "speed": 0.9
         },
 
         # ✅ Outbound opening — Maya introduces herself to the customer

@@ -17,8 +17,8 @@ from pydantic import BaseModel
 # Import configuration and models
 from app.config import (
     VAPI_API_KEY, VAPI_API_PUBLIC_KEY, VAPI_ASSISTANT_ID,
-    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI,
-    BACKEND_URL, FRONTEND_URL, GOOGLE_SCOPES, YOUR_EMAIL, 
+    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GOOGLE_AUTH_SCOPES, GOOGLE_SERVICE_ACCOUNT_JSON,
+    BACKEND_URL, FRONTEND_URL, GOOGLE_SCOPES, YOUR_EMAIL, GOOGLE_CALENDAR_REFRESH_TOKEN,
     DEFAULT_TIMEZONE, ASSISTANT_NAME, LOG_LEVEL, CORS_ORIGINS, build_assistant_config
 )
 from app.models import AppointmentDetails, CallResponse
@@ -43,16 +43,16 @@ token_store    = {}   # Google OAuth tokens
 booked_slots   = []   # All booked appointments (for reference)
 
 
-
-# ── Google OAuth ──────────────────────────────────────────────────────────────
+# ── Google OAuth (for user login only) ───────────────────────────────────────
 def get_google_flow():
+    """Used for user authentication only — not for calendar."""
     client_config = {
         "web": {
-            "client_id": GOOGLE_CLIENT_ID,
+            "client_id":     GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,
             "redirect_uris": [GOOGLE_REDIRECT_URI],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_uri":      "https://accounts.google.com/o/oauth2/auth",
+            "token_uri":     "https://oauth2.googleapis.com/token",
         }
     }
     flow = Flow.from_client_config(client_config, scopes=GOOGLE_SCOPES)
@@ -60,12 +60,31 @@ def get_google_flow():
     return flow
 
 
+# ── Service Account (for calendar only) ──────────────────────────────────────
 def get_calendar_service():
-    if "default" not in token_store:
-        raise HTTPException(status_code=401, detail="Google Calendar not connected. Please authenticate first.")
-    creds = Credentials(**token_store["default"])
-    return build("calendar", "v3", credentials=creds)
+    """Always uses YOUR OAuth credentials — sends invites from darshangptall@gmail.com"""
+    from google.auth.transport.requests import Request
 
+    refresh_token = GOOGLE_CALENDAR_REFRESH_TOKEN
+    if not refresh_token:
+        raise HTTPException(status_code=500, detail="GOOGLE_CALENDAR_REFRESH_TOKEN not set in .env")
+
+    creds = Credentials(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        scopes=[
+            "https://www.googleapis.com/auth/calendar",
+            "https://mail.google.com/",
+        ],
+    )
+
+    # Auto-refresh to get a valid access token
+    creds.refresh(Request())
+
+    return build("calendar", "v3", credentials=creds)
 
 # ── Calendar Helper ───────────────────────────────────────────────────────────
 def create_google_calendar_event(appt: AppointmentDetails) -> dict:
@@ -204,31 +223,48 @@ async def google_auth():
     return {"auth_url": auth_url}
 
 
+
+@app.get("/auth/my-token")
+async def get_my_token():
+    """One-time use — get your refresh token to store in .env"""
+    if "default" not in token_store:
+        return {"error": "Not authenticated. Login first."}
+    return token_store["default"]
+
 @app.get("/auth/callback")
 async def google_callback(code: str):
     try:
         flow = get_google_flow()
         flow.fetch_token(code=code)
         creds = flow.credentials
+
+        # ✅ Get user info (name, email) — NOT for calendar
+        user_info_service = build("oauth2", "v2", credentials=creds)
+        user_info = user_info_service.userinfo().get().execute()
+
+        # Store only user identity — not calendar credentials
         token_store["default"] = {
-            "token":         creds.token,
-            "refresh_token": creds.refresh_token,
-            "token_uri":     creds.token_uri,
-            "client_id":     creds.client_id,
-            "client_secret": creds.client_secret,
-            "scopes":        list(creds.scopes),
+            "email":   user_info.get("email"),
+            "name":    user_info.get("name"),
+            "picture": user_info.get("picture"),
+            "logged_in": True,
         }
-        # Redirect back to frontend after auth
+
         from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=os.getenv("FRONTEND_URL", "http://localhost:4200"))
+        return RedirectResponse(url=FRONTEND_URL)
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/auth/status")
 async def auth_status():
-    return {"authenticated": "default" in token_store}
-
+    if "default" in token_store:
+        return {
+            "authenticated": True,
+            "user": token_store["default"],   # ✅ return user info to frontend
+        }
+    return {"authenticated": False}
 
 # ── START CALL (called by Angular button) ─────────────────────────────────────
 @app.post("/call/start_phone")
