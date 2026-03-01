@@ -6,3 +6,6 @@ buildCommand = "npm install && npm run build -- --configuration production && cp
 startCommand = "sh start.sh"
 healthcheckPath = "/"
 healthcheckTimeout = 300
+
+[build.environment]
+NODE_VERSION = "20"
