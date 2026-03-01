@@ -1,8 +1,8 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install && npm run build -- --configuration production"
+buildCommand = "npm install && npm run build -- --configuration production && cp src/assets/env.template.js dist/voice-scheduling-agent-frontend/browser/assets/env.template.js"
 
 [deploy]
-startCommand = "npx serve -s dist/voice-scheduling-agent-frontend/browser -l $PORT"
+startCommand = "sh start.sh"
 healthcheckPath = "/"
 healthcheckTimeout = 300
