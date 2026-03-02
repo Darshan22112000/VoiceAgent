@@ -91,9 +91,25 @@ def validate_config():
 # ─────────────────────────────────────────────────────────────────────────────
 #  VAPI ASSISTANT CONFIG
 # ─────────────────────────────────────────────────────────────────────────────
-def build_assistant_config() -> dict:
+def build_assistant_config(user_email: str = None) -> dict:
     """Build VAPI assistant configuration with environment-based settings."""
     TODAY_PLACEHOLDER = datetime.now().strftime("%A, %B %d %Y")
+    if user_email:
+        email_instruction = f"""
+    7. **Collect Email** — The user is already logged in with {user_email}.
+       - Ask: "I have {user_email} on file from your login — would you like the calendar invite sent there, or would you prefer a different email?"
+       - If they say yes / that's fine / use that: use {user_email} as the email directly
+       - If they give a different email: confirm it letter by letter as usual
+       - Never skip email confirmation entirely — always read back what you'll use
+    """
+    else:
+        email_instruction = """
+    7. **Collect Email** — Most important step. Read it back clearly.
+       - Ask: "What's your email address? I'll send the calendar invite there."
+       - Read it back: "So that's darshan at gmail dot com — does that look right?"
+       - If wrong: "Which part should I fix?" — never ask for the whole email again
+    """
+
     return {
         "name": "Vikara Outbound Assistant",
         "endCallPhrases": [
@@ -163,10 +179,7 @@ When relevant, mention these options:
 6. **Collect Phone** — You're already on a call but get a direct number for the invite.
    Example: "And what's the best number to reach you on for the calendar invite?"
 
-7. **Collect Email** — Most important step. Read it back clearly.
-   Example: "What's your email address? I'll send the calendar invite there."
-   - Read it back: "So that's darshan at gmail dot com — does that look right?"
-   - If wrong: "Which part should I fix?" — never ask for the whole email again
+7. **Collect Email** — {email_instruction}
 
 8. **Date & Time** — Natural language only, never ask for formats.
    Example: "What day works best for you this week or next?"

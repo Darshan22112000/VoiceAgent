@@ -63,10 +63,24 @@ export class AppComponent implements OnInit, OnDestroy {
     { icon: '🔄', text: 'Retries if booking fails' },
   ];
 
+  userInfo: { email: string; name: string; picture: string } | null = null;
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   ngOnInit(): void {
-    this.checkAuthStatus();
-    this.initVapi();            // ✅ no more CDN loading needed
+    // ✅ Only one auth check, init vapi once after
+    this.http.get<any>(`${environment.apiUrl}/auth/status`).subscribe({
+      next: (res) => {
+        this.isAuthenticated = res.authenticated;
+        this.userInfo = res.user || null;
+        this.isCheckingAuth = false;
+        this.initVapi();          // ✅ init once here only
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isCheckingAuth = false;
+        this.initVapi();          // ✅ still init even if auth fails
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -119,11 +133,23 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ── VAPI Init ─────────────────────────────────────────────────────────────
   initVapi(): void {
+    const key = environment.vapiPublicKey;
+  
+    // ✅ Debug — check what key is loaded
+    // console.log('VAPI key length:', key?.length);
+    // console.log('VAPI key prefix:', key?.substring(0, 8));
+  
+    if (!key || key === 'your_actual_vapi_public_key_here' || key.length < 10) {
+      console.error('VAPI public key is missing or invalid!');
+      this.errorMessage = 'VAPI public key not configured.';
+      return;
+    }
+  
     try {
-      this.vapi = new Vapi(environment.vapiPublicKey);
+      this.vapi = new Vapi(key);
       this.isSdkReady = true;
       this.setupVapiListeners();
-      console.log('VAPI initialized successfully');
+      console.log('✅ VAPI initialized successfully');
       this.cdr.detectChanges();
     } catch (e) {
       console.error('VAPI init error:', e);
@@ -216,11 +242,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
   
     try {
-      const response = await this.http
-        .post<{ call_id: string; assistant_id: string; web_call_url: string }>(
-          `${environment.apiUrl}/call/start`, {}
-        )
-        .toPromise();
+      const userEmail = this.userInfo?.email || null;
+
+      const response = await this.http.post<any>(
+        `${environment.apiUrl}/call/start`,
+        { user_email: userEmail }    // ✅ pass email in request body
+      ).toPromise();
   
       console.log('Call response:', response);
   

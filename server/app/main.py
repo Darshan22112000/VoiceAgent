@@ -304,12 +304,16 @@ async def start_phone_call():
         logger.error(f"Error starting call: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class StartCallRequest(BaseModel):
+    user_email: str | None = None
+
 @app.post("/call/start")
-async def start_call():
+async def start_call(body: StartCallRequest = StartCallRequest()):
     if not VAPI_API_KEY:
         raise HTTPException(status_code=500, detail="VAPI_API_KEY not configured")
 
-    assistant_config = build_assistant_config()
+    assistant_config = build_assistant_config(user_email=body.user_email)
 
     try:
         async with httpx.AsyncClient() as client:
