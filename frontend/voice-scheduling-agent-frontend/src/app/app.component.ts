@@ -64,48 +64,58 @@ export class AppComponent implements OnInit, OnDestroy {
   ];
 
   userInfo: { email: string; name: string; picture: string } | null = null;
+  
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   ngOnInit(): void {
-    // ✅ Only one auth check, init vapi once after
-    this.http.get<any>(`${environment.apiUrl}/auth/status`).subscribe({
-      next: (res) => {
-        this.isAuthenticated = res.authenticated;
-        this.userInfo = res.user || null;
-        this.isCheckingAuth = false;
-        this.initVapi();          // ✅ init once here only
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.isCheckingAuth = false;
-        this.initVapi();          // ✅ still init even if auth fails
-        this.cdr.detectChanges();
-      }
-    });
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('auth_token');
+  
+    console.log('auth_token in URL:', token);  // ✅ add this debug line
+  
+    if (token) {
+      this.http.get<any>(`${environment.apiUrl}/auth/verify?token=${token}`)
+        .subscribe({
+          next: (res) => {
+            this.isAuthenticated = res.authenticated;
+            this.userInfo = res.user || null;
+            this.isCheckingAuth = false;
+            window.history.replaceState({}, document.title, '/');  // ✅ clean URL
+            this.initVapi();
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            console.error('Token verify failed:', err);
+            this.isCheckingAuth = false;
+            this.initVapi();
+            this.cdr.detectChanges();
+          }
+        });
+    } else {
+      this.http.get<any>(`${environment.apiUrl}/auth/status`).subscribe({
+        next: (res) => {
+          this.isAuthenticated = res.authenticated;
+          this.userInfo = res.user || null;
+          this.isCheckingAuth = false;
+          this.initVapi();
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.isCheckingAuth = false;
+          this.initVapi();
+          this.cdr.detectChanges();
+        }
+      });
+    }
   }
-
   ngOnDestroy(): void {
     this.endCall();
     if (this.durationInterval) clearInterval(this.durationInterval);
   }
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  checkAuthStatus(): void {
-    this.http.get<{ authenticated: boolean }>(`${environment.apiUrl}/auth/status`)
-      .subscribe({
-        next: (res) => {
-          this.isAuthenticated = res.authenticated;
-          this.isCheckingAuth = false;
-          this.cdr.detectChanges();
-        },
-        error: () => {
-          this.isCheckingAuth = false;
-          this.cdr.detectChanges();
-        },
-      });
-  }
+
 
   connectGoogle(): void {
-    this.http.get<{ auth_url: string }>(`${environment.apiUrl}/auth/google`)
+    this.http.get<{ auth_url: string }>(`${environment.apiUrl}/auth/google`, { withCredentials: true })
       .subscribe({
         next: (res) => window.location.href = res.auth_url,
         error: () => this.errorMessage = 'Failed to initiate Google authentication.',
@@ -113,7 +123,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    this.http.post(`${environment.apiUrl}/auth/logout`, {})
+    this.http.post(`${environment.apiUrl}/auth/logout`, {}, { withCredentials: true })
       .subscribe({
         next: () => {
           this.isAuthenticated = false;
@@ -246,7 +256,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
       const response = await this.http.post<any>(
         `${environment.apiUrl}/call/start`,
-        { user_email: userEmail }    // ✅ pass email in request body
+        { user_email: userEmail },
+        { withCredentials: true }    // ✅ pass email in request body
       ).toPromise();
   
       console.log('Call response:', response);

@@ -11,15 +11,20 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import logging
-
+from starlette.middleware.sessions import SessionMiddleware
+import secrets
+from starlette.requests import Request
+import uuid
+import time
 from pydantic import BaseModel
+from starlette.responses import RedirectResponse
 
 # Import configuration and models
 from app.config import (
     VAPI_API_KEY, VAPI_API_PUBLIC_KEY, VAPI_ASSISTANT_ID,
     GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI,
     BACKEND_URL, FRONTEND_URL, GOOGLE_SCOPES, YOUR_EMAIL, GOOGLE_CALENDAR_REFRESH_TOKEN,
-    DEFAULT_TIMEZONE, ASSISTANT_NAME, LOG_LEVEL, CORS_ORIGINS, build_assistant_config
+    DEFAULT_TIMEZONE, ASSISTANT_NAME, LOG_LEVEL, CORS_ORIGINS, build_assistant_config, ENVIRONMENT
 )
 from app.models import AppointmentDetails, CallResponse
 
@@ -27,6 +32,14 @@ logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Voice Scheduling Agent API", version="1.0.0")
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", secrets.token_hex(32)),
+    max_age=86400,
+    https_only=False,
+    same_site="lax",    # ✅ lax works for same-host different ports locally
+)
 
 # Configure CORS properly
 app.add_middleware(
@@ -37,11 +50,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory stores - TODO: Replace with database (PostgreSQL/MongoDB)
-# This is temporary for MVP. Production should use persistent storage
-token_store    = {}   # Google OAuth tokens
 booked_slots   = []   # All booked appointments (for reference)
-
+auth_tokens: dict = {}   # ✅ temporary one-time OAuth tokens only
 
 # ── Google OAuth (for user login only) ───────────────────────────────────────
 def get_google_flow():
@@ -217,54 +227,65 @@ async def health():
 
 # ── Google Auth ───────────────────────────────────────────────────────────────
 @app.get("/auth/google")
-async def google_auth():
-    flow    = get_google_flow()
-    auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
+async def auth_google(request: Request):
+    flow = get_google_flow()
+    auth_url, state = flow.authorization_url(
+        access_type="offline",
+        prompt="consent"
+    )
+    request.session["oauth_state"] = state
     return {"auth_url": auth_url}
 
-
-
 @app.get("/auth/my-token")
-async def get_my_token():
-    """One-time use — get your refresh token to store in .env"""
-    if "default" not in token_store:
+async def get_my_token(request: Request):
+    user = request.session.get("user")
+    if not user:
         return {"error": "Not authenticated. Login first."}
-    return token_store["default"]
+    return user
 
 @app.get("/auth/callback")
-async def google_callback(code: str):
-    try:
-        flow = get_google_flow()
-        flow.fetch_token(code=code)
-        creds = flow.credentials
+async def google_callback(request: Request, code: str):
+    flow = get_google_flow()
+    flow.fetch_token(code=code)
+    creds = flow.credentials
 
-        # ✅ Get user info (name, email) — NOT for calendar
-        user_info_service = build("oauth2", "v2", credentials=creds)
-        user_info = user_info_service.userinfo().get().execute()
+    user_info_service = build("oauth2", "v2", credentials=creds)
+    user_info = user_info_service.userinfo().get().execute()
 
-        # Store only user identity — not calendar credentials
-        token_store["default"] = {
+    token = str(uuid.uuid4())
+    auth_tokens[token] = {
+        "user": {
             "email":   user_info.get("email"),
             "name":    user_info.get("name"),
             "picture": user_info.get("picture"),
             "logged_in": True,
-        }
+        },
+        "expires_at": time.time() + 60
+    }
 
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=FRONTEND_URL)
+    # ✅ Token in URL — bypasses cookie entirely
+    return RedirectResponse(url=f"{FRONTEND_URL}?auth_token={token}")
 
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
+@app.get("/auth/verify")
+async def verify_token(request: Request, token: str):
+    entry = auth_tokens.pop(token, None)
+    if not entry or time.time() > entry["expires_at"]:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    request.session["user"] = entry["user"]    # ✅ set via proxy = same session
+    return {"authenticated": True, "user": entry["user"]}
 
 @app.get("/auth/status")
-async def auth_status():
-    if "default" in token_store:
-        return {
-            "authenticated": True,
-            "user": token_store["default"],   # ✅ return user info to frontend
-        }
+async def auth_status(request: Request):
+    user = request.session.get("user")
+    if user and user.get("logged_in"):
+        return {"authenticated": True, "user": user}
     return {"authenticated": False}
+
+@app.post("/auth/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return {"success": True, "message": "Logged out successfully"}
+
 
 # ── START CALL (called by Angular button) ─────────────────────────────────────
 @app.post("/call/start_phone")
@@ -516,11 +537,6 @@ async def vapi_webhook(request: Request):
         )
     return {"received": True}
 
-@app.post("/auth/logout")
-async def logout():
-    if "default" in token_store:
-        del token_store["default"]
-    return {"success": True, "message": "Logged out successfully"}
 
 # ── LIST APPOINTMENTS ─────────────────────────────────────────────────────────
 @app.get("/appointments")
