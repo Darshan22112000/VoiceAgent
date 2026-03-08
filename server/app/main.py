@@ -27,7 +27,7 @@ from app.config import (
     DEFAULT_TIMEZONE, ASSISTANT_NAME, LOG_LEVEL, CORS_ORIGINS, build_assistant_config, ENVIRONMENT
 )
 from app.models import AppointmentDetails, CallResponse
-
+from app.auth import router as auth_router
 logging.basicConfig(level=LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(auth_router)
 booked_slots   = []   # All booked appointments (for reference)
 auth_tokens: dict = {}   # ✅ temporary one-time OAuth tokens only
 
@@ -225,66 +225,6 @@ async def health():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 
-# ── Google Auth ───────────────────────────────────────────────────────────────
-@app.get("/auth/google")
-async def auth_google(request: Request):
-    flow = get_google_flow()
-    auth_url, state = flow.authorization_url(
-        access_type="offline",
-        prompt="consent"
-    )
-    request.session["oauth_state"] = state
-    return {"auth_url": auth_url}
-
-@app.get("/auth/my-token")
-async def get_my_token(request: Request):
-    user = request.session.get("user")
-    if not user:
-        return {"error": "Not authenticated. Login first."}
-    return user
-
-@app.get("/auth/callback")
-async def google_callback(request: Request, code: str):
-    flow = get_google_flow()
-    flow.fetch_token(code=code)
-    creds = flow.credentials
-
-    user_info_service = build("oauth2", "v2", credentials=creds)
-    user_info = user_info_service.userinfo().get().execute()
-
-    token = str(uuid.uuid4())
-    auth_tokens[token] = {
-        "user": {
-            "email":   user_info.get("email"),
-            "name":    user_info.get("name"),
-            "picture": user_info.get("picture"),
-            "logged_in": True,
-        },
-        "expires_at": time.time() + 60
-    }
-
-    # ✅ Token in URL — bypasses cookie entirely
-    return RedirectResponse(url=f"{FRONTEND_URL}?auth_token={token}")
-
-@app.get("/auth/verify")
-async def verify_token(request: Request, token: str):
-    entry = auth_tokens.pop(token, None)
-    if not entry or time.time() > entry["expires_at"]:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    request.session["user"] = entry["user"]    # ✅ set via proxy = same session
-    return {"authenticated": True, "user": entry["user"]}
-
-@app.get("/auth/status")
-async def auth_status(request: Request):
-    user = request.session.get("user")
-    if user and user.get("logged_in"):
-        return {"authenticated": True, "user": user}
-    return {"authenticated": False}
-
-@app.post("/auth/logout")
-async def logout(request: Request):
-    request.session.clear()
-    return {"success": True, "message": "Logged out successfully"}
 
 
 # ── START CALL (called by Angular button) ─────────────────────────────────────

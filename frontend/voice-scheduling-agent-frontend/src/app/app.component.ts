@@ -70,8 +70,6 @@ export class AppComponent implements OnInit, OnDestroy {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('auth_token');
   
-    console.log('auth_token in URL:', token);  // ✅ add this debug line
-  
     if (token) {
       this.http.get<any>(`${environment.apiUrl}/auth/verify?token=${token}`)
         .subscribe({
@@ -144,10 +142,6 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── VAPI Init ─────────────────────────────────────────────────────────────
   initVapi(): void {
     const key = environment.vapiPublicKey;
-  
-    // ✅ Debug — check what key is loaded
-    // console.log('VAPI key length:', key?.length);
-    // console.log('VAPI key prefix:', key?.substring(0, 8));
   
     if (!key || key === 'your_actual_vapi_public_key_here' || key.length < 10) {
       console.error('VAPI public key is missing or invalid!');
@@ -259,8 +253,6 @@ export class AppComponent implements OnInit, OnDestroy {
         { user_email: userEmail },
         { withCredentials: true }    // ✅ pass email in request body
       ).toPromise();
-  
-      console.log('Call response:', response);
   
       if (!response?.assistant_id) {
         throw new Error('No assistant ID received from server');
